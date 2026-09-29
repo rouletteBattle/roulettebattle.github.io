@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#11131d">
+<title>ルーレットバトル</title>
+<link rel="stylesheet" href="css/style.css?v=4">
+</head>
+<body>
+<!-- BUILD:HEAD-START -->
+<header class="app-head" id="appHead">
+  <div class="brand">🎡 <span class="title">ルーレットバトル</span></div>
+  <span class="sync" id="syncInd"></span>
+</header>
+<!-- BUILD:HEAD-END -->
+
+<!-- BUILD:APP-START -->
+<div id="playApp">
+<div class="wrap">
+
+  <section id="setup">
+    <div class="setup-head">
+      <span id="dataInfo" class="dim"></span>
+      <div class="grow"></div>
+      <button type="button" id="importBtn">📂 JSON読込</button>
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+    </div>
+    <div id="dataWarn" class="warn-box" hidden></div>
+    <div class="setup-grid">
+      <div class="panel setup-players">
+        <div class="row setup-tools">
+          <div class="count-ctl">
+            <span>人数</span>
+            <button type="button" class="icon" id="cntMinus" aria-label="人数を減らす">−</button>
+            <span class="n" id="cntN">4</span>
+            <button type="button" class="icon" id="cntPlus" aria-label="人数を増やす">＋</button>
+          </div>
+          <label class="row" style="gap:4px"><input type="checkbox" id="teamMode"> チーム戦</label>
+          <div class="grow"></div>
+          <button type="button" id="allRandom">🎲 全員おまかせ</button>
+          <button type="button" id="allCpu">🤖 2人目以降CPU</button>
+          <button type="button" id="allHuman">🙋 全員人間</button>
+        </div>
+        <div id="prows"></div>
+      </div>
+      <div class="setup-side">
+        <div class="panel online-panel" id="onlinePanel"></div>
+        <div class="panel side-box">
+          <h3>ルール</h3>
+          <div id="ruleInfo"></div>
+          <button type="button" class="primary big-start" id="startBtn">バトル開始!</button>
+        </div>
+      </div>
+    </div>
+    <div class="mobile-start"><button type="button" class="primary" id="startBtn2">バトル開始!</button></div>
+  </section>
+
+  <section id="lobby" hidden>
+    <div class="panel lobby-panel">
+      <div id="lobbyBody"></div>
+      <div class="row" style="margin-top:14px"><button type="button" class="danger" id="leaveBtn">ルームから退出</button></div>
+    </div>
+  </section>
+
+  <section id="battle" hidden>
+    <div class="topbar">
+      <div class="round" id="roundLbl">ラウンド 1</div>
+      <div class="ctrls">
+        <select id="speedSel" title="演出の速さ" aria-label="演出の速さ">
+          <option value="normal">ふつう</option>
+          <option value="fast">はやい</option>
+          <option value="turbo">さいそく</option>
+        </select>
+        <button type="button" class="icon" id="soundBtn" title="効果音">🔊</button>
+        <button type="button" class="icon" id="pauseBtn" title="CPUの自動進行を一時停止">⏸</button>
+        <button type="button" id="quitBtn">終了</button>
+      </div>
+      <div class="order-strip" id="orderStrip"></div>
+    </div>
+    <div class="battle">
+      <div class="board" id="board"></div>
+      <div class="side">
+        <div class="panel turn-panel" id="turnPanel">
+          <div class="turn-head" id="turnHead"></div>
+          <div class="wheel-title" id="wheelTitle"></div>
+          <div class="wheel-box">
+            <canvas id="wheel"></canvas>
+            <div class="result-banner" id="banner"></div>
+          </div>
+          <div class="prompt" id="prompt"></div>
+          <div class="target-bar" id="targetBar"></div>
+          <div class="row spin-row">
+            <button type="button" class="primary spin-btn" id="spinBtn" disabled>スピン!</button>
+            <button type="button" class="item-btn" id="itemBtn" hidden>🃏 きりふだを使う</button>
+          </div>
+        </div>
+        <details class="panel log-wrap" id="logWrap" open>
+          <summary>バトルログ</summary>
+          <div class="logbox" id="log"></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section id="result" hidden>
+    <div class="panel result">
+      <div style="font-size:60px" id="resIcon">🏆</div>
+      <h2 class="title" id="resTitle"></h2>
+      <div id="resRank" style="max-width:760px;margin:0 auto"></div>
+      <div class="row" style="justify-content:center;margin-top:18px">
+        <button type="button" class="primary" id="againBtn">同じメンバーでもう一度</button>
+        <button type="button" id="backBtn">セットアップに戻る</button>
+        <button type="button" id="showLogBtn">ログを見る</button>
+        <span class="dim" id="guestWait" hidden>ホストが次のバトルを始めるのを待っています…</span>
+        <button type="button" class="danger" id="leaveBtn2" hidden>ルームから退出</button>
+      </div>
+    </div>
+  </section>
+</div>
+<div id="modal" class="modal-bg" hidden></div>
+</div>
+<!-- BUILD:APP-END -->
+
+<!-- BUILD:SCRIPTS-START -->
+<script src="js/default-data.js?v=4"></script>
+<script src="js/engine.js?v=4"></script>
+<script src="js/store.js?v=4"></script>
+<script src="js/ui.js?v=4"></script>
+<script src="js/wheel.js?v=4"></script>
+<script src="js/net.js?v=4"></script>
+<script src="js/game.js?v=4"></script>
+<script src="js/app.js?v=4"></script>
+<!-- BUILD:SCRIPTS-END -->
+</body>
+</html>

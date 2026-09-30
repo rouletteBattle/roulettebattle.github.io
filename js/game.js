@@ -980,18 +980,6 @@ var RBGame = (function () {
     $('#allHuman').onclick = () => { setup.players.forEach((p) => { p.cpu = false; }); saveSetup(); renderSetup(); };
     $('#startBtn').onclick = onStart;
     $('#startBtn2').onclick = onStart;
-    $('#importBtn').onclick = () => $('#importFile').click();
-    $('#importFile').onchange = async (e) => {
-      const f = e.target.files[0]; e.target.value = '';
-      if (!f) return;
-      try {
-        const d = await RBStore.readFile(f);
-        if (!(await RBUI.confirm(`「${f.name}」を読み込みます。今のデータ (キャラ・技など) は置き換わります。`, { ok: '読み込む' }))) return;
-        RBStore.save(d); loadData(); renderSetup();
-        if (role === 'host') for (const np of netPlayers) RBNet.send(np.id, { t: 'data', data: DATA });
-        RBUI.toast('読み込みました');
-      } catch (err) { RBUI.alert(err.message); }
-    };
     $('#leaveBtn').onclick = leaveRoom;
     $('#leaveBtn2').onclick = leaveRoom;
 

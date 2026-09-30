@@ -163,6 +163,8 @@ var RBGame = (function () {
     ['maxSpinChain', '「もう一回」の上限 (1ターン)', 'num'],
     ['maxExtraSpins', '2回行動系で増える回数の上限', 'num'],
     ['maxRounds', '打ち切りラウンド (残りHP割合で判定)', 'num'],
+    ['lastStandHealWeightPct', '最後の行動: 回復技の区画 % (−75で1/4)', 'num'],
+    ['reviveCapPct', '最後の行動で復活した時のHP上限 (最大HPの%)', 'num'],
   ];
   let rulesOpen = false;
 

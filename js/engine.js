@@ -162,6 +162,8 @@ var RB = (function () {
     suddenDeathPct: 25,     // 1ラウンドごとに +%
     maxRounds: 60,          // 打ち切り (HP割合で順位)
     itemMode: 'random',     // きりふだの配り方
+    lastStandHealWeightPct: -75, // 最後の行動のとき、回復できる技の区画の大きさ % (−75 = 1/4)
+    reviveCapPct: 30,       // 最後の行動で復活した時の HP の上限 (最大HPの%)
     dotLabel: '●', starLabel: '★',
   };
 
@@ -382,6 +384,11 @@ var RB = (function () {
   // 現在のルーレット (状態異常による無効化込み)
   RB.wheelOf = function (g, p) {
     const segs = RB.charWheel(g.data, g.idx, p.char);
+    // 最後の行動では回復で立ち上がれる技の区画を小さくする
+    if (p.lastStand && p.hp <= 0) {
+      const lw = num(g.rules.lastStandHealWeightPct, -75);
+      if (lw) for (const s of segs) if (RB.canHealMove(s.move)) s.weight = Math.max(0, s.weight * (1 + lw / 100));
+    }
     const mw = RB.sumMod(p, 'missWeightPct');
     if (mw) for (const s of segs) if (s.kind === 'miss') s.weight = Math.max(0, s.weight * (1 + mw / 100));
     for (const st of p.statuses) {
@@ -404,6 +411,9 @@ var RB = (function () {
   RB.hasGear = (g, p) => !!(p.gear && g.idx.gears[p.gear.id] && RB.wheelFor(g, p, 'gear').length);
 
   // 狙える相手: 挑発している敵がいればその人だけ。隠れ身の敵は (全員隠れていなければ) 狙えない
+  // 自分の HP を回復できる技か (回復効果・吸収)
+  RB.canHealMove = (mv) => num(mv.drainPct) > 0 || (mv.effects || []).some(e => (e.type === 'heal' && (e.to === 'self' || e.to === 'allies' || e.to === 'everyone' || ((!e.to || e.to === 'target') && ['self', 'allies', 'everyone'].includes(mv.target)))) || (e.type === 'damage' && num(e.drainPct) > 0) || e.type === 'hpSwap' || e.type === 'hpChaos');
+
   RB.validTargets = function (g, p) {
     let en = RB.enemiesOf(g, p);
     const taunt = en.filter(t => RB.sumMod(t, 'taunt') > 0);
@@ -776,6 +786,7 @@ var RB = (function () {
     if (RB.sumMod(p, 'healBlock') > 0 && amount > 0) { RB.log(g, `  🚫 ${p.name} は回復を封じられている`, 'bad'); return 0; }
     const bonus = healer ? num(healer.passive.healPct) : 0;
     amount = Math.round(num(amount) * (1 + bonus / 100));
+    if (p.hp <= 0 && revive && has(g.rules.reviveCapPct)) amount = Math.min(amount, Math.max(1, Math.round(p.maxHp * num(g.rules.reviveCapPct) / 100)));
     const before = p.hp;
     p.hp = Math.min(p.maxHp, p.hp + Math.max(0, amount));
     const got = p.hp - before;
@@ -1146,6 +1157,7 @@ var RB = (function () {
       RB.log(g, `☠ ${q.name} は脱落した`, 'ko');
       RB.fxPush(g, q.id, 'out', '脱落');
     }
+    if (p) p.lastStand = false;
     g.turnCount++;
     g.ptr++;
     RB.checkWin(g);

@@ -45,11 +45,24 @@ var RB = (function () {
     nullifyBelow: { name: 'N以下のダメージ無効',    short: '無効≤', unit: '' },
     guard:        { name: '攻撃無効 (回数)',       short: '🛡', unit: '回' },
     reflectPct:   { name: '受けたダメージを反射 %', short: '反射', unit: '%' },
+    critPct:      { name: '会心率 % (1.5倍ダメージ)', short: '会心', unit: '%' },
+    evadePct:     { name: '回避率 % (攻撃をかわす)', short: '回避', unit: '%' },
+    endure:       { name: 'こらえる (HP1で耐える回数)', short: '根性', unit: '回' },
+    regen:        { name: '毎ターン回復', short: '再生', unit: '' },
+    thorns:       { name: 'トゲ (攻撃してきた相手にダメージ)', short: 'トゲ', unit: '' },
+    lifestealPct: { name: '吸収 % (与ダメの%回復)', short: '吸収', unit: '%' },
+    missWeightPct:{ name: 'ミスの大きさ % (+で不運・−で幸運)', short: 'ミス', unit: '%' },
+    healBlock:    { name: '回復封じ', short: '回復封', unit: '' },
+    taunt:        { name: '挑発 (敵は自分しか狙えない)', short: '挑発', unit: '' },
+    stealth:      { name: '隠れ身 (狙われない)', short: '隠れ', unit: '' },
+    speed:        { name: 'すばやさ +', short: '速', unit: '' },
     extraSpins:   { name: '行動回数 + (2回行動)',  short: '連続', unit: '回' },
     luck:         { name: 'ミス回避 (回数)',       short: '🍀', unit: '回' },
   };
   // 「逆転」で符号を反転できる能力 (回数系は反転しない)
-  RB.INVERTIBLE = ['atkFlat', 'atkPct', 'nextPower', 'defFlat', 'dmgTakenPct', 'reflectPct'];
+  RB.INVERTIBLE = ['atkFlat', 'atkPct', 'nextPower', 'defFlat', 'dmgTakenPct', 'reflectPct', 'critPct', 'evadePct', 'regen', 'thorns', 'lifestealPct', 'missWeightPct', 'speed'];
+  // 値が大きいほど「不利」な能力
+  RB.BAD_WHEN_POSITIVE = ['dmgTakenPct', 'missWeightPct', 'healBlock'];
 
   RB.TRIGGERS = {
     passive:     '常時 (パッシブのみ)',
@@ -296,7 +309,7 @@ var RB = (function () {
   RB.log = function (g, text, cls) { g.log.push({ text, cls: cls || '', round: g.round }); };
   RB.fxPush = function (g, pid, kind, value) { g.fx.push({ pid, kind, value }); };
 
-  RB.speed = (p) => num(p.char.speed, 3);
+  RB.speed = (p) => num(p.char.speed, 3) + RB.sumMod(p, 'speed');
   RB.alive = (p) => !p.out && p.hp > 0;
   RB.isEnemy = (a, b) => a.id !== b.id && (a.team === 0 || a.team !== b.team);
   RB.enemiesOf = (g, p) => g.players.filter(q => RB.alive(q) && RB.isEnemy(p, q));
@@ -314,6 +327,7 @@ var RB = (function () {
       else list.sort((a, b) => (RB.speed(b) - RB.speed(a)) || (r.get(a.id) - r.get(b.id)));
     }
     g.order = list.map(p => p.id);
+    g.aim = {};   // このラウンドに CPU が誰を何回狙ったか
     g.ptr = 0;
     const sdr = num(g.rules.suddenDeathRound);
     if (sdr > 0 && g.round >= sdr) {
@@ -368,6 +382,8 @@ var RB = (function () {
   // 現在のルーレット (状態異常による無効化込み)
   RB.wheelOf = function (g, p) {
     const segs = RB.charWheel(g.data, g.idx, p.char);
+    const mw = RB.sumMod(p, 'missWeightPct');
+    if (mw) for (const s of segs) if (s.kind === 'miss') s.weight = Math.max(0, s.weight * (1 + mw / 100));
     for (const st of p.statuses) {
       const def = g.idx.statuses[st.id];
       for (const slot of (st.disabled || [])) {
@@ -387,7 +403,14 @@ var RB = (function () {
   RB.canUseItem = (g, p) => !!(p.item && !p.itemUsed && g.idx.items[p.item] && RB.wheelFor(g, p, 'item').length);
   RB.hasGear = (g, p) => !!(p.gear && g.idx.gears[p.gear.id] && RB.wheelFor(g, p, 'gear').length);
 
-  RB.validTargets = function (g, p) { return RB.enemiesOf(g, p); };
+  // 狙える相手: 挑発している敵がいればその人だけ。隠れ身の敵は (全員隠れていなければ) 狙えない
+  RB.validTargets = function (g, p) {
+    let en = RB.enemiesOf(g, p);
+    const taunt = en.filter(t => RB.sumMod(t, 'taunt') > 0);
+    if (taunt.length) return taunt;
+    const vis = en.filter(t => RB.sumMod(t, 'stealth') <= 0);
+    return vis.length ? vis : en;
+  };
 
   const needsPick = (mv) => (mv.target || 'single') === 'single' || (mv.effects || []).some(e => e.type === 'mimic' || e.type === 'randomMove' || e.type === 'hpSwap');
   RB.needsTarget = function (g, p, src) {
@@ -435,12 +458,16 @@ var RB = (function () {
       let exp = 0;
       for (const s of segs) if (s.kind === 'attack') exp += (s.power + RB.bonusVs(s.move, t)) * Math.max(1, num(s.move.hits, 1)) * s.weight;
       exp /= total;
-      let sc = (1 - t.hp / t.maxHp) * 40 + exp * 0.8 + g.rng() * 45;
-      if (t.hp <= exp * 1.2) sc += 35;            // 倒せそう
-      if (t.cpu === false) sc += 3;                // ちょっとだけ人間を狙う
-      sc -= RB.sumMod(t, 'guard') * 20 + RB.sumMod(t, 'barrier') * 0.3 + RB.sumMod(t, 'reflectPct') * 0.4;
+      // 人間・CPU を区別しない。弱った相手を少し優先しつつ、同じ相手ばかり狙わないよう分散する
+      let sc = (1 - t.hp / t.maxHp) * 25 + exp * 0.6 + g.rng() * 50;
+      if (t.hp <= exp * 1.2) sc += 25;                             // 倒せそう
+      if (t.lastAttacker === p.id) sc += 15;                        // やり返す
+      sc -= ((g.aim || {})[t.id] || 0) * 22;                        // このラウンドにもう狙われている
+      sc -= RB.sumMod(t, 'guard') * 20 + RB.sumMod(t, 'barrier') * 0.3 + RB.sumMod(t, 'reflectPct') * 0.4 + RB.sumMod(t, 'thorns') * 0.8 + RB.sumMod(t, 'evadePct') * 0.4;
       if (sc > bs) { bs = sc; best = t; }
     }
+    g.aim = g.aim || {};
+    g.aim[best.id] = (g.aim[best.id] || 0) + 1;
     return best.id;
   };
 
@@ -519,9 +546,10 @@ var RB = (function () {
       case 'randomEnemy': { const t = pick(g, en); return t ? [t] : []; }
       case 'randomAny': { const t = pick(g, g.players.filter(q => RB.alive(q) || q.id === p.id)); return t ? [t] : []; }
       default: {
+        const valid = RB.validTargets(g, p);
         const t = g.players[targetId];
-        if (t && RB.alive(t) && RB.isEnemy(p, t)) return [t];
-        const r = pick(g, en);
+        if (t && valid.includes(t)) return [t];
+        const r = pick(g, valid);
         return r ? [r] : [];
       }
     }
@@ -612,11 +640,18 @@ var RB = (function () {
       if (!RB.alive(d)) break;
       const c = RB.calcDamage(g, a, d, power, opts, extraMult, ctx);
       mult = c.mult;
+      const crit = RB.sumMod(a, 'critPct');
+      if (crit > 0 && c.dmg > 0 && g.rng() * 100 < crit) { c.dmg = Math.round(c.dmg * 1.5); RB.log(g, `  ⚡ 会心の一撃!`, 'good'); }
       total += RB.applyDamage(g, d, c.dmg, { src: a, attack: true, pierce: !!opts.pierce, mult, hitNo: hits > 1 ? h + 1 : 0 });
     }
     a.dealt += total;
     if (ctx) ctx.dealt += total;
+    d.lastAttacker = a.id;
     const fromMove = !!(ctx && ctx.move && !ctx.srcTag);
+    const ls = RB.sumMod(a, 'lifestealPct');
+    if (ls > 0 && total > 0) RB.heal(g, a, Math.round(total * ls / 100), a, false);
+    const th = RB.sumMod(d, 'thorns');
+    if (th > 0 && total > 0 && !a.out) { RB.log(g, `  🌵 ${d.name} のトゲ!`, 'good'); RB.applyDamage(g, a, th, { src: d }); }
     if (num(opts.drainPct) > 0 && total > 0) RB.heal(g, a, Math.round(total * num(opts.drainPct) / 100), a, fromMove);
     if (num(opts.recoilPct) > 0 && total > 0) {
       const r = Math.round(total * num(opts.recoilPct) / 100);
@@ -654,6 +689,12 @@ var RB = (function () {
     amount = Math.max(0, Math.round(num(amount)));
     const src = o.src && o.src.id !== d.id ? o.src : null;
     if (o.attack && !o.pierce && src) {
+      const ev = RB.sumMod(d, 'evadePct');
+      if (ev > 0 && g.rng() * 100 < ev) {
+        RB.log(g, `  💨 ${d.name} は攻撃をかわした!`, 'good');
+        RB.fxPush(g, d.id, 'guard', 'かわした');
+        return 0;
+      }
       const gm = d.mods.find(m => m.stat === 'guard' && num(m.value) > 0);
       if (gm) {
         gm.value = num(gm.value) - 1;
@@ -679,6 +720,16 @@ var RB = (function () {
     if (amount <= 0) {
       if (o.attack) { RB.log(g, `  ${d.name} にダメージはなかった`, ''); RB.fxPush(g, d.id, 'dmg', 0); }
       return 0;
+    }
+    if (d.hp - amount <= 0) {
+      const en = d.mods.find(m => m.stat === 'endure' && num(m.value) > 0);
+      if (en && d.hp > 1) {
+        en.value = num(en.value) - 1;
+        if (en.value <= 0) d.mods.splice(d.mods.indexOf(en), 1);
+        amount = d.hp - 1;
+        RB.log(g, `  💪 ${d.name} はこらえた!`, 'good');
+        RB.fxPush(g, d.id, 'buff', 'こらえた');
+      }
     }
     d.hp -= amount;
     d.taken += amount;
@@ -722,6 +773,7 @@ var RB = (function () {
   RB.heal = function (g, p, amount, healer, revive) {
     if (p.out) return 0;
     if (p.hp <= 0 && !revive) return 0;
+    if (RB.sumMod(p, 'healBlock') > 0 && amount > 0) { RB.log(g, `  🚫 ${p.name} は回復を封じられている`, 'bad'); return 0; }
     const bonus = healer ? num(healer.passive.healPct) : 0;
     amount = Math.round(num(amount) * (1 + bonus / 100));
     const before = p.hp;
@@ -802,7 +854,7 @@ var RB = (function () {
     RB.fxPush(g, t.id, good ? 'buff' : 'debuff', `${info.short}${sign}${value}${info.unit}`);
   };
 
-  RB.isGoodMod = (m) => (m.stat === 'dmgTakenPct' ? num(m.value) < 0 : num(m.value) > 0);
+  RB.isGoodMod = (m) => (RB.BAD_WHEN_POSITIVE.includes(m.stat) ? num(m.value) < 0 : num(m.value) > 0);
 
   // ===================== 効果・特性 =====================
   RB.effectTargets = function (g, to, ctx) {
@@ -981,7 +1033,7 @@ var RB = (function () {
         break;
       }
       case 'transform': {
-        const ch = g.idx.chars[e.char];
+        const ch = e.char === '@target' ? ((ctx.targets || []).find(x => x.id !== t.id) || {}).char : g.idx.chars[e.char];
         if (!ch || t.char.id === ch.id || t.out) return false;
         const old = t.char;
         t.char = ch; t.charId = ch.id;
@@ -1076,6 +1128,9 @@ var RB = (function () {
         if (m.turns > 0 && m.born !== g.turnCount) { m.turns--; if (m.turns <= 0) return false; }
         return true;
       });
+      const rg = RB.sumMod(p, 'regen');
+      if (rg > 0 && p.hp > 0) RB.heal(g, p, rg, null, false);
+      else if (rg < 0 && p.hp > 0) RB.applyDamage(g, p, -rg, { dot: '🩸 衰弱:' });
       if (p.gear && p.gear.turns > 0 && p.gear.born !== g.turnCount) {
         p.gear.turns--;
         if (p.gear.turns <= 0) { const gd = g.idx.gears[p.gear.id]; RB.log(g, `  ⚙ ${p.name} のギア「${gd ? gd.name : '?'}」が外れた`, ''); p.gear = null; }
@@ -1179,7 +1234,7 @@ var RB = (function () {
         if (e.type === 'damage' && e.element && !idx.elements[e.element]) w.push(`${where}: 属性「${e.element}」がありません`);
         if (e.type === 'damage') checkEb(where, e);
         if (e.type === 'mod' && !RB.MOD_STATS[e.stat]) w.push(`${where}: バフ/デバフの能力が未設定です`);
-        if (e.type === 'transform' && !idx.chars[e.char]) w.push(`${where}: 進化・変身先のキャラが未設定です`);
+        if (e.type === 'transform' && e.char !== '@target' && !idx.chars[e.char]) w.push(`${where}: 進化・変身先のキャラが未設定です`);
         if (e.type === 'attachGear' && e.gear && !idx.gears[e.gear]) w.push(`${where}: ギア「${e.gear}」がありません`);
         if (!RB.EFFECTS[e.type]) w.push(`${where}: 不明な効果「${e.type}」`);
       }
@@ -1293,6 +1348,13 @@ var RB = (function () {
         else if (e.stat === 'luck') s = `${to}はミスを${v}回まで引き直せる`;
         else if (e.stat === 'reflectPct') s = `${to}は受けたダメージの${v}%を反射`;
         else if (e.stat === 'nextPower') s = `${to}の次の攻撃の威力+${v}`;
+        else if (e.stat === 'endure') s = `${to}は倒れそうな攻撃を${v}回HP1でこらえる`;
+        else if (e.stat === 'regen') s = v > 0 ? `${to}は毎ターンHPが${v}回復` : `${to}は毎ターン${-v}ダメージ (衰弱)`;
+        else if (e.stat === 'thorns') s = `${to}を攻撃した相手に${v}ダメージ (トゲ)`;
+        else if (e.stat === 'missWeightPct') s = v > 0 ? `${to}のルーレットのミスが${v}%大きくなる (不運)` : `${to}のルーレットのミスが${-v}%小さくなる (幸運)`;
+        else if (e.stat === 'healBlock') s = `${to}は回復できなくなる (回復封じ)`;
+        else if (e.stat === 'taunt') s = `${to}が挑発: 敵は${to}しか狙えない`;
+        else if (e.stat === 'stealth') s = `${to}は隠れ身: 狙われなくなる`;
         else s = `${to}の${label}${v > 0 ? '+' : ''}${v}${info.unit}`;
         s += num(e.turns) > 0 ? `(${e.turns}ターン)` : (['guard', 'barrier', 'luck', 'nextPower'].includes(e.stat) ? '' : '(永続)');
         break;
@@ -1307,7 +1369,7 @@ var RB = (function () {
       case 'mimic': s = '相手が最後に使った技をまねする'; break;
       case 'attachGear': s = `${to}に${e.gear ? 'ギア「' + nm(data, 'gears', e.gear) + '」' : (RB.GEAR_POOL[e.pool || 'any'] || 'ギア') + (e.pool && e.pool !== 'any' ? 'をランダムに1つ' : 'をランダムに')}つける (ギアは1人1つまで)`; break;
       case 'removeGear': s = `${to}のギアを外す`; break;
-      case 'transform': s = `${e.to === 'self' || !e.to ? '' : to + 'を'}「${nm(data, 'chars', e.char)}」に${e.to === 'self' ? '進化する' : '変身させる'}`; break;
+      case 'transform': s = e.char === '@target' ? '選んだ相手と同じキャラに変身する' : `${e.to === 'self' || !e.to ? '' : to + 'を'}「${nm(data, 'chars', e.char)}」に${e.to === 'self' ? '進化する' : '変身させる'}`; break;
       case 'spinAgain': s = 'もう一回ルーレット'; break;
       default: s = e.type;
     }

@@ -443,3 +443,67 @@ textarea.json { width: 100%; min-height: 300px; font-family: Consolas, monospace
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* ゲーム画面のルール変更 */
+.rule-edit { margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 8px; }
+.rule-edit summary { font-weight: 700; font-size: 13px; }
+.rule-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 10px; margin-top: 8px; }
+.rule-form .row { grid-column: 1 / -1; }
+.rule-form input[type=number], .rule-form select { width: 100%; }
+
+/* ========== スマホ: なるべく1画面に収める ========== */
+@media (max-width: 560px) {
+  #battle .topbar { margin-bottom: 6px; gap: 6px; flex-wrap: nowrap; }
+  #battle .topbar .round { font-size: 15px; white-space: nowrap; }
+  #battle .ctrls { gap: 4px; }
+  #battle .ctrls select { padding: 4px 6px; font-size: 14px; }
+  #battle .ctrls button { padding: 4px 8px; min-width: 0; }
+  .order-strip { display: none; }
+  .battle { gap: 8px; }
+  .side { gap: 6px; }
+  .turn-panel { padding: 8px 10px; }
+  .turn-head { min-height: 0; gap: 6px; }
+  .turn-head .ico { font-size: 26px; width: 30px; }
+  .turn-head img.ico { width: 30px; height: 30px; }
+  .turn-head .who { font-size: 15px; }
+  .turn-head .sub { font-size: 11px; }
+  .wheel-title { min-height: 0; font-size: 12px; margin-top: 2px; }
+  .wheel-box { max-width: min(300px, 36vh); margin: 4px auto 2px; }
+  .prompt { min-height: 18px; font-size: 13px; }
+  .target-bar { padding: 2px 0 4px; gap: 4px; }
+  .target-bar .tgt { min-width: 96px; padding: 3px 6px; }
+  .target-bar .tgt .ico { font-size: 18px; width: 22px; }
+  .target-bar .tgt img.ico { width: 22px; height: 22px; }
+  .target-bar .tgt .tn { font-size: 12px; }
+  .spin-row { margin-top: 2px; gap: 6px; flex-wrap: nowrap; }
+  .spin-btn { font-size: 18px; padding: 9px 12px; }
+  .item-btn { font-size: 12px; padding: 9px 8px; width: auto; flex: 0 1 45%; }
+  .result-banner .mv { font-size: 20px; }
+  .log-wrap { padding: 6px 10px; }
+  /* 小さな選手カード: アイコン・名前・HPだけ */
+  .board { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .pcard { padding: 5px 6px 6px; border-width: 2px; border-radius: 9px; }
+  .pcard .head { gap: 4px; padding-right: 0; }
+  .pcard .head .ico { font-size: 20px; width: 22px; }
+  .pcard .head img.ico { width: 22px; height: 22px; }
+  .pcard .pname { font-size: 12px; }
+  .pcard .pname .cpu, .pcard .pname .team-tag, .pcard .pname .you-tag { font-size: 9px; padding: 0 3px; margin-left: 2px; }
+  .pcard .cname, .pcard .tags { display: none; }
+  .pcard .info-btn { display: none; }
+  .pcard { cursor: pointer; }
+  .pcard .ord { font-size: 9px; top: -6px; left: -6px; padding: 0 4px; }
+  .pcard .hpbar { height: 8px; margin-top: 3px; }
+  .pcard .hptext { font-size: 10px; margin-top: 1px; }
+  .pcard .chips { max-height: 16px; overflow: hidden; margin-top: 2px; }
+  .pcard .chip { font-size: 9px; padding: 0 3px; }
+  .pcard.out::before { font-size: 18px; }
+  .pcard.targeted::after { font-size: 14px; right: 4px; bottom: 2px; }
+  .floater { font-size: 18px; }
+  /* セットアップ: 行を詰める */
+  .setup-players { padding: 10px; }
+  .prow { padding: 6px; margin-bottom: 4px; gap: 6px; }
+  .prow .cinfo { font-size: 12px; gap: 4px; }
+  .prow .cinfo .badge.type, .prow .cinfo .marks + span + span { display: none; }
+  .setup-side .panel { padding: 10px; gap: 8px; }
+  .rule-line { font-size: 12px; padding: 2px 0; }
+}

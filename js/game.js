@@ -31,6 +31,7 @@ var RBGame = (function () {
   function loadData() {
     const r = RBStore.load();
     DATA = r.data;
+    DATA.rules = Object.assign({}, RB.rules(DATA), (setup && setup.rules) || {});
     IDX = RB.index(DATA);
     $('#dataInfo').textContent = r.source === 'custom' ? `使用データ: 編集済み (${RBStore.fmtDate(r.savedAt)})` : '使用データ: 初期データ';
     const w = RB.validate(DATA);
@@ -150,17 +151,61 @@ var RBGame = (function () {
     sendLobby();
   }
 
+  const RULE_FIELDS = [
+    ['hpScalePerPlayer', 'HP倍率: 3人目から1人ごとに +%', 'num'],
+    ['protect', '倒れた時', RB.PROTECT_MODES],
+    ['orderBy', '行動順', RB.ORDER_MODES],
+    ['itemMode', 'きりふだ', RB.ITEM_MODES],
+    ['aoeFalloff', '全体技: 対象1人ごとの威力 −%', 'num'],
+    ['aoeFloor', '全体技: 威力の下限 %', 'num'],
+    ['suddenDeathRound', 'サドンデス開始ラウンド (0=なし)', 'num'],
+    ['suddenDeathPct', 'サドンデス: 毎ラウンド与ダメ +%', 'num'],
+    ['maxSpinChain', '「もう一回」の上限 (1ターン)', 'num'],
+    ['maxExtraSpins', '2回行動系で増える回数の上限', 'num'],
+    ['maxRounds', '打ち切りラウンド (残りHP割合で判定)', 'num'],
+  ];
+  let rulesOpen = false;
+
+  function resendData() { if (role === 'host') for (const np of netPlayers) RBNet.send(np.id, { t: 'data', data: DATA }); }
+
   function renderRules(n) {
     const r = DATA.rules;
+    const custom = Object.keys(setup.rules || {}).length;
+    $('#ruleInfo').innerHTML = rulesHtml(r, n) + `
+      <details class="rule-edit" id="ruleEdit"${rulesOpen ? ' open' : ''}>
+        <summary>⚙ ルールを変更する${custom ? ` <span class="badge">${custom}項目 変更中</span>` : ''}</summary>
+        <div class="rule-form">${RULE_FIELDS.map(([k, label, kind]) => kind === 'num'
+          ? `<label class="f"><span>${label}</span><input type="number" inputmode="decimal" data-rule="${k}" value="${esc(r[k])}"></label>`
+          : `<label class="f"><span>${label}</span><select data-rule="${k}">${Object.entries(kind).map(([v, l]) => `<option value="${esc(v)}"${String(r[k]) === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`).join('')}
+          <div class="row"><button type="button" class="small" id="ruleReset"${custom ? '' : ' disabled'}>元のルールに戻す</button><span class="dim" style="font-size:12px">この端末に保存されます。オンラインではホストのルールで遊びます</span></div>
+        </div>
+      </details>`;
+    const det = $('#ruleEdit');
+    det.addEventListener('toggle', () => { rulesOpen = det.open; });
+    det.querySelectorAll('[data-rule]').forEach(el => {
+      el.onchange = () => {
+        const k = el.dataset.rule;
+        let v = el.value;
+        if (el.type === 'number') { if (v === '' || isNaN(+v)) { el.value = r[k]; return; } v = +v; }
+        rulesOpen = true;
+        setup.rules = setup.rules || {};
+        setup.rules[k] = v;
+        saveSetup(); loadData(); renderSetup(); resendData();
+      };
+    });
+    $('#ruleReset').onclick = () => { setup.rules = {}; saveSetup(); loadData(); renderSetup(); resendData(); RBUI.toast('元のルールに戻しました'); };
+  }
+
+  function rulesHtml(r, n) {
     const sd = RB.num(r.suddenDeathRound);
-    $('#ruleInfo').innerHTML = [
+    return [
       ['人数', `${n}人`],
       ['HP倍率', `×${RB.hpMultiplier(r, n).toFixed(2)} <span class="dim">(3人目から1人ごとに+${RB.num(r.hpScalePerPlayer)}%)</span>`],
       ['行動順', esc(RB.ORDER_MODES[r.orderBy] || r.orderBy)],
       ['倒れた時', esc((RB.PROTECT_MODES[r.protect] || r.protect).replace(/ \(.*\)$/, ''))],
       ['全体技', `対象1人増えるごとに -${RB.num(r.aoeFalloff)}% (最低${RB.num(r.aoeFloor)}%)`],
       ['サドンデス', sd > 0 ? `ラウンド${sd}から毎ラウンド与ダメ+${RB.num(r.suddenDeathPct)}%` : 'なし'],
-      ['きりふだ', esc(RB.ITEM_MODES[itemMode()] || '') + ' (1試合に1回)'],
+      ['きりふだ', esc(RB.ITEM_MODES[r.itemMode || 'random'] || '') + ' (1試合に1回)'],
       [`${esc(r.dotLabel || '●')} / ${esc(r.starLabel || '★')}`, `キャラの印。「${esc(r.dotLabel || '●')}の敵全員に30」のように片方だけ狙う技がある`],
     ].map(([a, b]) => `<div class="rule-line"><span class="dim">${a}</span><span style="text-align:right">${b}</span></div>`).join('')
       + `<div class="dim" style="font-size:12px;margin-top:6px">${esc(RB.PROTECT_MODES[r.protect] || '')}</div>`;
@@ -345,7 +390,6 @@ var RBGame = (function () {
         waiting = { pid: m.pid, need: !!m.need, canItem: !!m.canItem, mode: m.mode, itemName: m.itemName || '', remote: true };
         selectedTarget = (typeof m.target === 'number') ? m.target : null;
         $('#prompt').textContent = m.prompt || 'あなたの番です!';
-        if (narrow()) $('#turnPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
         RBSound.tick();
         refresh();
         break;
@@ -369,6 +413,7 @@ var RBGame = (function () {
         ${choose ? `<label class="f"><span>きりふだ</span><select id="lbItem">${itemOptions(myPick.item)}</select></label>` : ''}
       </div>
       <div class="cinfo-wide">${DATA && IDX.chars[myPick.charId] ? charInfo(IDX.chars[myPick.charId], n) : ''}</div>
+      <details class="rule-edit" style="margin-top:12px"><summary>📜 このルームのルール</summary>${DATA ? rulesHtml(DATA.rules, n) : ''}</details>
       <h3 style="margin:14px 0 6px">参加者 (${n}人)</h3>
       <div class="lobby-list">${rows.map((r, i) => {
         const ch = DATA && IDX.chars[r.charId];
@@ -458,7 +503,7 @@ var RBGame = (function () {
         <div class="hptext"></div>
         <div class="chips"></div>`;
       el.querySelector('.info-btn').onclick = (e) => { e.stopPropagation(); showCharModal(p.char, p); };
-      el.onclick = () => selectTarget(p.id);
+      el.onclick = () => { if (!selectTarget(p.id) && narrow()) showCharModal(p.char, p); };
       board.appendChild(el);
       cards[p.id] = { el, head: el.querySelector('.head'), tags: el.querySelector('.tags'), fill: el.querySelector('.fill'), lag: el.querySelector('.lag'), hp: el.querySelector('.hptext'), chips: el.querySelector('.chips'), ord: el.querySelector('.ord'), charId: null };
       paintCardHead(p);
@@ -478,13 +523,15 @@ var RBGame = (function () {
   // この端末で操作できる待ち状態か
   const canOperate = () => !!waiting && (role !== 'guest' || waiting.pid === guestPid);
 
+  // 狙いを決めた時は true
   function selectTarget(pid) {
-    if (!canOperate() || !G) return;
+    if (!canOperate() || !G || !waiting.need) return false;
     const cur = G.players[waiting.pid];
-    if (!cur || !RB.validTargets(G, cur).some(t => t.id === pid)) return;
+    if (!cur || !RB.validTargets(G, cur).some(t => t.id === pid)) return false;
     selectedTarget = pid;
     RBSound.tick();
     refresh();
+    return true;
   }
 
   function modChips(p) {
@@ -555,8 +602,8 @@ var RBGame = (function () {
       const cls = p.out ? 'done' : (i < G.ptr ? 'done' : (G.current === id ? 'now' : '')) + (p.hp <= 0 && !p.out ? ' downed' : '');
       return `<span class="o ${cls}">${icon(p.char)}${esc(p.name)}</span>`;
     }).join('');
-    const now = $('#orderStrip .now');
-    if (now && narrow()) now.scrollIntoView({ block: 'nearest', inline: 'center' });
+    const strip = $('#orderStrip'), now = $('#orderStrip .now');
+    if (now && strip.scrollWidth > strip.clientWidth) strip.scrollLeft = Math.max(0, now.offsetLeft - strip.clientWidth / 2);
     renderLog();
     const needOk = !op || !waiting.need || selectedTarget != null || validList.length === 0;
     $('#spinBtn').disabled = !op || !needOk;
@@ -738,7 +785,6 @@ var RBGame = (function () {
     }
     // この端末の人
     pub('prompt', { text: o.prompt });
-    if (narrow()) { const tp = $('#turnPanel'); const top = tp.getBoundingClientRect().top; if (top < 0 || top > window.innerHeight * 0.5) tp.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     return new Promise((resolve) => {
       waiting = { pid: p.id, need: o.need, canItem: o.canItem, mode: o.mode, itemName, resolve: (v) => { waiting = null; resolve(v); } };
       refresh();
@@ -923,7 +969,7 @@ var RBGame = (function () {
 
   // ===================== 初期化 =====================
   function init() {
-    loadData(); loadSetup(); renderSetup();
+    loadSetup(); loadData(); renderSetup();
     $('#cntMinus').onclick = () => setCount(totalPlayers() - 1);
     $('#cntPlus').onclick = () => setCount(totalPlayers() + 1);
     $('#teamMode').onchange = (e) => { setup.teamMode = e.target.checked; saveSetup(); renderSetup(); };

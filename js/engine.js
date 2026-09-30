@@ -164,6 +164,8 @@ var RB = (function () {
     itemMode: 'random',     // きりふだの配り方
     lastStandHealWeightPct: -75, // 最後の行動のとき、回復できる技の区画の大きさ % (−75 = 1/4)
     reviveCapPct: 30,       // 最後の行動で復活した時の HP の上限 (最大HPの%)
+    missStreakShrinkPct: 30, // ミスが続くたびにミスの区画を何%ずつ小さくするか
+    missStreakMinPct: 20,   // 連続ミスで小さくなる下限 (元の大きさの%)
     dotLabel: '●', starLabel: '★',
   };
 
@@ -290,7 +292,7 @@ var RB = (function () {
         id: i, name: sp.name || ('P' + (i + 1)), charId: ch.id, char: ch, team: num(sp.team), cpu: !!sp.cpu,
         passive, maxHp, hp: maxHp, statuses: [], mods: [], downed: false, out: false, acted: false,
         once: {}, lowFired: {}, kills: 0, dealt: 0, taken: 0, seat: i,
-        misses: 0, uses: {}, lastMove: null,
+        misses: 0, missStreak: 0, uses: {}, lastMove: null,
         gear: null, item: RB.pickItem(data, rules, sp, opts.rng || Math.random), itemUsed: false,
       });
     });
@@ -388,6 +390,12 @@ var RB = (function () {
     if (p.lastStand && p.hp <= 0) {
       const lw = num(g.rules.lastStandHealWeightPct, -75);
       if (lw) for (const s of segs) if (RB.canHealMove(s.move)) s.weight = Math.max(0, s.weight * (1 + lw / 100));
+    }
+    // 連続でミスするほどミスの区画が小さくなる
+    const shrink = num(g.rules.missStreakShrinkPct);
+    if (shrink > 0 && p.missStreak > 0) {
+      const f = Math.max(num(g.rules.missStreakMinPct, 20) / 100, 1 - p.missStreak * shrink / 100);
+      for (const s of segs) if (s.kind === 'miss') s.weight = s.weight * f;
     }
     const mw = RB.sumMod(p, 'missWeightPct');
     if (mw) for (const s of segs) if (s.kind === 'miss') s.weight = Math.max(0, s.weight * (1 + mw / 100));
@@ -500,7 +508,7 @@ var RB = (function () {
     }
     if (seg.disabledBy) {
       res.missed = true;
-      p.misses++;
+      p.misses++; p.missStreak = (p.missStreak || 0) + 1;
       RB.log(g, `⚡ 「${seg.move.name}」は ${seg.disabledBy} で使えない! 不発… (ミス${p.misses}回目)`, 'bad');
       RB.fire(g, p, 'onSpin', { moveKind: 'miss', res });
       return res;
@@ -509,11 +517,12 @@ var RB = (function () {
     const kind = mv.kind || 'attack';
     if (kind === 'miss') {
       res.missed = true;
-      p.misses++;
-      RB.log(g, `❌ ${p.name} は「${mv.name}」を引いた… (ミス${p.misses}回目)`, 'bad');
+      p.misses++; p.missStreak = (p.missStreak || 0) + 1;
+      RB.log(g, `❌ ${p.name} は「${mv.name}」を引いた… (ミス${p.misses}回目)` + (num(g.rules.missStreakShrinkPct) > 0 ? ' 🍀次はミスが出にくくなる' : ''), 'bad');
       RB.fire(g, p, 'onSpin', { moveKind: 'miss', move: mv, res });
       return res;
     }
+    p.missStreak = 0;
     RB.log(g, `🎯 ${p.name} の「${mv.name}」!` + (kind === 'attack' && seg.power ? ` (威力${seg.power})` : ''), 'act');
     RB.fire(g, p, 'onSpin', { moveKind: kind, move: mv, res });
     RB.execMove(g, p, mv, seg.power, targetId, res, 0);

@@ -165,6 +165,8 @@ var RBGame = (function () {
     ['maxRounds', '打ち切りラウンド (残りHP割合で判定)', 'num'],
     ['lastStandHealWeightPct', '最後の行動: 回復技の区画 % (−75で1/4)', 'num'],
     ['reviveCapPct', '最後の行動で復活した時のHP上限 (最大HPの%)', 'num'],
+    ['missStreakShrinkPct', '連続ミス: 1回ごとにミス枠を −%', 'num'],
+    ['missStreakMinPct', '連続ミス: ミス枠の下限 (元の%)', 'num'],
   ];
   let rulesOpen = false;
 
@@ -682,7 +684,7 @@ var RBGame = (function () {
       players: G.players.map(p => ({
         id: p.id, name: p.name, charId: p.char.id, team: p.team, cpu: !!p.cpu, ctrl: p.ctrl && p.ctrl.startsWith('net:') ? 'net' : p.ctrl,
         hp: p.hp, maxHp: p.maxHp, statuses: p.statuses, mods: p.mods, out: p.out, downed: p.downed, lastStand: !!p.lastStand,
-        misses: p.misses, kills: p.kills, dealt: p.dealt, taken: p.taken, gear: p.gear, item: p.item, itemUsed: p.itemUsed,
+        misses: p.misses, missStreak: p.missStreak || 0, kills: p.kills, dealt: p.dealt, taken: p.taken, gear: p.gear, item: p.item, itemUsed: p.itemUsed,
       })),
     };
   }

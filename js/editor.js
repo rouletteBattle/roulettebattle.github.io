@@ -869,7 +869,8 @@ var RBEditor = (function () {
         fNum(r, 'lastStandHealWeightPct', '最後の行動: 回復できる技の区画の大きさ % (−75 で1/4)', { keepEmpty: true }),
         fNum(r, 'reviveCapPct', '最後の行動で復活した時のHP上限 (最大HPの%)', { keepEmpty: true }),
         fNum(r, 'missStreakShrinkPct', '連続ミス: 1回ごとにミスの区画を小さくする %', { keepEmpty: true }),
-        fNum(r, 'missStreakMinPct', '連続ミス: ミスの区画の下限 (元の大きさの%)', { keepEmpty: true })),
+        fNum(r, 'missStreakMinPct', '連続ミス: ミスの区画の下限 (元の大きさの%)', { keepEmpty: true }),
+        fNum(r, 'groupFallbackPct', '条件付き範囲攻撃で当てはまる敵がいない時、敵全体に威力の% (0 = 不発)', { keepEmpty: true })),
       hpTable,
       h('div', { class: 'dim', style: 'font-size:12px;margin-top:6px' }, '「最後の行動保証」では、自分のターンが回ってくる前にHPが0になっても、自分のターンで最後の行動ができます (技の回復・吸収でHPが戻れば復活)。そのターンの終わりにHP0なら脱落します。')));
     updHp();

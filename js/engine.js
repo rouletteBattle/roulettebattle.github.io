@@ -166,6 +166,7 @@ var RB = (function () {
     reviveCapPct: 30,       // 最後の行動で復活した時の HP の上限 (最大HPの%)
     missStreakShrinkPct: 30, // ミスが続くたびにミスの区画を何%ずつ小さくするか
     missStreakMinPct: 20,   // 連続ミスで小さくなる下限 (元の大きさの%)
+    groupFallbackPct: 50,   // 条件付き範囲攻撃で対象がいない時、敵全体に威力の何%で当てるか (0 = 不発)
     dotLabel: '●', starLabel: '★',
   };
 
@@ -541,10 +542,24 @@ var RB = (function () {
       const t = pick(g, g.players.filter(RB.alive));
       if (t) { targets = [t]; RB.log(g, `😵 ${p.name} はこんらんして ${t.id === p.id ? '自分' : t.name} に向かった!`, 'bad'); }
     }
+    // 条件付き範囲攻撃で当てはまる敵がいない時: 攻撃なら敵全体に弱めに当てる、それ以外は不発
+    let fallback = 1;
+    if (tmode === 'group' && !targets.length) {
+      const fb = num(g.rules.groupFallbackPct);
+      const en = RB.enemiesOf(g, p);
+      if (kind === 'attack' && fb > 0 && en.length) {
+        targets = en;
+        fallback = fb / 100;
+        RB.log(g, `  (当てはまる敵がいないので、敵全体に威力${fb}%で攻撃)`, '');
+      } else {
+        RB.log(g, '  …当てはまる敵がいなかった。不発', 'bad');
+        return;
+      }
+    }
     if (res && !res.targets) res.targets = targets.map(t => t.id);
     const ctx = { self: p, targets, move: mv, dealt: 0, res, depth: depth || 0, targetId };
     if (kind === 'attack' && num(power) > 0) {
-      const aoe = targets.length > 1 ? Math.max(num(g.rules.aoeFloor, 50), 100 - (targets.length - 1) * num(g.rules.aoeFalloff)) / 100 : 1;
+      const aoe = (targets.length > 1 ? Math.max(num(g.rules.aoeFloor, 50), 100 - (targets.length - 1) * num(g.rules.aoeFalloff)) / 100 : 1) * fallback;
       for (const t of targets) RB.attack(g, p, t, power, mv, ctx, aoe);
     }
     RB.runEffects(g, mv.effects || [], ctx);
@@ -1410,6 +1425,7 @@ var RB = (function () {
     const tgt = m.target === 'group' ? RB.groupLabel(data, m) : RB.MOVE_TARGETS[m.target || 'single'];
     if (kind === 'attack') {
       let s = `${tgt}に威力${p}${scaleText(m)}`;
+      if (m.target === 'group') { const fb = num((data.rules || {}).groupFallbackPct, 50); s += fb > 0 ? `(いなければ敵全体に${fb}%)` : '(いなければ不発)'; }
       if (num(m.pctHp)) s += `+現在HPの${m.pctHp}%`;
       if (num(m.hits) > 1) s += `×${m.hits}回`;
       const x = [];

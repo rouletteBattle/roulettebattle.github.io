@@ -72,7 +72,7 @@ var RB_DEFAULT_DATA = {
     { id: 'amaikaori', name: '甘い誘惑', kind: 'status', target: 'single', effects: [{ type: 'mod', to: 'target', stat: 'atkPct', value: -30, turns: 2 }] },
     { id: 'hanabira', name: '花乱舞', kind: 'attack', power: 55, target: 'single', elemBonus: { water: 15, earth: 10 }, typeBonus: { defender: 15 }, effects: [{ type: 'status', to: 'self', status: 'confuse', chance: 50 }] },
     // --- 雷
-    { id: 'denkishock', name: 'スパークショット', kind: 'attack', power: 35, target: 'single', elemBonus: { water: 15, wind: 15 }, typeBonus: { defender: 15 }, effects: [{ type: 'status', to: 'target', status: 'para', chance: 30 }] },
+    { id: 'denkishock', name: 'スパークショット', kind: 'attack', power: 40, target: 'single', elemBonus: { water: 15, wind: 15 }, typeBonus: { defender: 15 }, effects: [{ type: 'status', to: 'target', status: 'para', chance: 30 }] },
     { id: 'houden', name: 'サンダーバースト', kind: 'attack', power: 20, target: 'allEnemies', elemBonus: { water: 10, wind: 10 }, typeBonus: { defender: 10 }, effects: [{ type: 'status', to: 'target', status: 'para', chance: 20 }] },
     { id: 'kousoku', name: '加速ダッシュ', kind: 'status', target: 'self', effects: [{ type: 'spinAgain' }] },
     { id: 'kaminari', name: '落雷', kind: 'attack', power: 70, target: 'single', elemBonus: { water: 25, wind: 20 }, typeBonus: { defender: 15 } },
@@ -81,10 +81,10 @@ var RB_DEFAULT_DATA = {
     { id: 'juden', name: '蓄電', kind: 'status', target: 'self', effects: [{ type: 'mod', to: 'self', stat: 'atkPct', value: 50, turns: 2 }] },
     // --- 光
     { id: 'hikarinoya', name: 'ライトアロー', kind: 'attack', power: 30, target: 'single', elemBonus: { dark: 15, psychic: 10 }, typeBonus: { trickster: 15 } },
-    { id: 'iyashinohikari', name: 'ホーリーヒール', kind: 'heal', target: 'self', effects: [{ type: 'heal', to: 'self', amount: 30 }, { type: 'cure', to: 'self' }] },
+    { id: 'iyashinohikari', name: 'ホーリーヒール', kind: 'heal', target: 'self', effects: [{ type: 'heal', to: 'self', amount: 25 }, { type: 'cure', to: 'self' }] },
     { id: 'holyray', name: 'ホーリーレイ', kind: 'attack', power: 45, target: 'single', elemBonus: { dark: 20, psychic: 10 }, typeBonus: { trickster: 15 } },
     { id: 'seiiki', name: 'せいいき', kind: 'guard', target: 'self', effects: [{ type: 'mod', to: 'self', stat: 'nullifyBelow', value: 20, turns: 2 }] },
-    { id: 'seiken', name: 'せいけん', kind: 'attack', power: 35, target: 'single', markBonus: { dot: 15 }, elemBonus: { dark: 10, psychic: 10 }, typeBonus: { trickster: 15, gambler: 15 } },
+    { id: 'seiken', name: 'せいけん', kind: 'attack', power: 35, target: 'single', markBonus: { dot: 10 }, elemBonus: { dark: 10, psychic: 10 }, typeBonus: { trickster: 15, gambler: 15 } },
     { id: 'iatsu', name: 'いあつ', kind: 'status', target: 'group', groupMark: 'dot', effects: [{ type: 'status', to: 'target', status: 'para', chance: 40 }], desc: '敵の●全員を40%でまひさせる' },
     { id: 'mikiri', name: '受け流し', kind: 'guard', target: 'self', effects: [{ type: 'mod', to: 'self', stat: 'guard', value: 1, turns: 2 }] },
     { id: 'gigaslash', name: '断罪の一閃', kind: 'attack', power: 50, target: 'single', elemBonus: { dark: 10, psychic: 10 }, typeBonus: { attacker: 15 } },
@@ -94,7 +94,7 @@ var RB_DEFAULT_DATA = {
     { id: 'akumu', name: '悪夢の囁き', kind: 'attack', power: 20, target: 'single', elemBonus: { light: 10, psychic: 10 }, typeBonus: { healer: 15 }, effects: [{ type: 'status', to: 'target', status: 'sleep', chance: 30 }] },
     { id: 'yumekui', name: '夢喰らい', kind: 'attack', power: 30, target: 'single', elemBonus: { light: 15, psychic: 10 }, typeBonus: { healer: 15 }, drainPct: 50, effects: [{ type: 'damage', to: 'target', power: 20, drainPct: 50, cond: { targetStatus: 'sleep' } }] },
     { id: 'ayashiihikari', name: '惑わしの灯', kind: 'status', target: 'single', effects: [{ type: 'status', to: 'target', status: 'confuse' }] },
-    { id: 'shadowball', name: '暗黒弾', kind: 'attack', power: 50, target: 'single', elemBonus: { light: 15, psychic: 15 }, typeBonus: { defender: 15 } },
+    { id: 'shadowball', name: '暗黒弾', kind: 'attack', power: 55, target: 'single', elemBonus: { light: 15, psychic: 15 }, typeBonus: { defender: 15 } },
     { id: 'noroi', name: '呪詛', kind: 'status', target: 'single', effects: [{ type: 'damage', to: 'self', power: 10 }, { type: 'mod', to: 'target', stat: 'dmgTakenPct', value: 30, turns: 3 }] },
     { id: 'kagebunshin', name: '影武者', kind: 'guard', target: 'self', effects: [{ type: 'mod', to: 'self', stat: 'guard', value: 1, turns: 2 }, { type: 'spinAgain', chance: 50 }] },
 
@@ -179,7 +179,7 @@ var RB_DEFAULT_DATA = {
     // ===== メカニック (ギア使い) =====
     { id: 'gearup', name: 'ギアそうちゃく', kind: 'status', target: 'self', effects: [{ type: 'attachGear', to: 'self', pool: 'good' }, { type: 'spinAgain', link: 'then' }], desc: '自分に良いギアをつけてもう一回 (ギアがあれば不発)' },
     { id: 'gearcurse', name: 'ポンコツギア', kind: 'status', target: 'single', effects: [{ type: 'attachGear', to: 'target', pool: 'bad' }, { type: 'damage', to: 'target', power: 25, link: 'else' }], desc: '相手に悪いギアをつける。もうギアがあれば25ダメージ' },
-    { id: 'spanner', name: 'スパナなげ', kind: 'attack', power: 30, target: 'single', elemBonus: { water: 15, wind: 10 }, typeBonus: { defender: 15 } },
+    { id: 'spanner', name: 'スパナなげ', kind: 'attack', power: 35, target: 'single', elemBonus: { water: 15, wind: 10 }, typeBonus: { defender: 15 } },
     { id: 'gearbreak', name: 'ギアクラッシュ', kind: 'attack', power: 25, target: 'allEnemies', elemBonus: { water: 10, wind: 5 }, typeBonus: { defender: 10 }, effects: [{ type: 'removeGear', to: 'target', chance: 50 }], desc: '敵全体に25。50%で相手のギアを壊す' },
 
     // ===== 新キャラの技 =====
@@ -266,7 +266,7 @@ var RB_DEFAULT_DATA = {
     { id: 'ganjou', name: '頑丈', trigger: 'battleStart', effects: [{ type: 'mod', to: 'self', stat: 'endure', value: 1, turns: 0 }], desc: '倒れそうな攻撃を1回だけHP1でこらえる' },
     { id: 'kuishinbo', name: '食いしん坊', trigger: 'turnEnd', effects: [{ type: 'heal', to: 'self', amount: 8 }], desc: '自分のターン終了時にHP3回復' },
     { id: 'surudoime', name: '鋭い目', trigger: 'battleStart', effects: [{ type: 'mod', to: 'self', stat: 'critPct', value: 15, turns: 0 }], desc: '会心率+15% (ずっと)' },
-    { id: 'tetsunotoge', name: '鉄のトゲ', trigger: 'battleStart', effects: [{ type: 'mod', to: 'self', stat: 'thorns', value: 7, turns: 0 }], desc: '攻撃してきた相手に7ダメージ (ずっと)' },
+    { id: 'tetsunotoge', name: '鉄のトゲ', trigger: 'battleStart', effects: [{ type: 'mod', to: 'self', stat: 'thorns', value: 5, turns: 0 }], desc: '攻撃してきた相手に5ダメージ (ずっと)' },
     { id: 'jiai', name: '慈愛', trigger: 'battleStart', effects: [{ type: 'mod', to: 'self', stat: 'regen', value: 2, turns: 0 }], desc: '毎ターンHP2回復 (ずっと)' },
     { id: 'shinobi', name: '忍びの心得', trigger: 'battleStart', effects: [{ type: 'mod', to: 'self', stat: 'evadePct', value: 15, turns: 0 }], desc: '回避率+15% (ずっと)' },
     { id: 'kozakana', name: '小魚の根性', trigger: 'battleStart', effects: [{ type: 'mod', to: 'self', stat: 'endure', value: 1, turns: 0 }], desc: '大化けするまで粘れるよう、1回だけHP1でこらえる' },

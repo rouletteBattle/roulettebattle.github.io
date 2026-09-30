@@ -167,6 +167,7 @@ var RBGame = (function () {
     ['reviveCapPct', '最後の行動で復活した時のHP上限 (最大HPの%)', 'num'],
     ['missStreakShrinkPct', '連続ミス: 1回ごとにミス枠を −%', 'num'],
     ['missStreakMinPct', '連続ミス: ミス枠の下限 (元の%)', 'num'],
+    ['groupFallbackPct', '条件付き範囲攻撃: 対象がいない時 敵全体に威力% (0=不発)', 'num'],
   ];
   let rulesOpen = false;
 
